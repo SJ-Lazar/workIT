@@ -1,0 +1,4 @@
+/* Minimal global styles for modern layout */
+* {
+  box-sizing: border-box;
+}
