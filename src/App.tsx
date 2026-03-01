@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './App.css';
 import Users from './components/Users';
 import Roles from './components/Roles';
 import Departments from './components/Departments';
+import Teams from './components/Teams';
 
 const navItems = [
   { key: 'dashboard', label: 'Dashboard', icon: '🏠' },
@@ -28,8 +29,7 @@ function App() {
   } else if (section === 'team') {
     mainContent = (
       <div>
-        <h1>Team</h1>
-        <p>Manage your team here.</p>
+        <Teams />
       </div>
     );
   } else if (section === 'projects') {

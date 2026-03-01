@@ -1,0 +1,230 @@
+.teams-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.teams-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.teams-header-row h2 {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.teams-meta {
+  color: #4ea8de;
+  font-size: 0.9rem;
+}
+
+.teams-create-card,
+.teams-assignment-card {
+  background: var(--color-secondary);
+  border: 1px solid #35374a;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.teams-create-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.teams-create-fields {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(240px, 1.2fr);
+  gap: 10px;
+  flex: 1;
+}
+
+.teams-input {
+  background: var(--color-primary);
+  border: 1px solid #35374a;
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.92rem;
+}
+
+.teams-input:focus {
+  outline: 1px solid var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.teams-primary-btn,
+.teams-secondary-btn {
+  border-radius: 8px;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.teams-primary-btn {
+  background: var(--color-accent);
+  color: var(--color-primary);
+}
+
+.teams-secondary-btn {
+  background: var(--color-primary);
+  color: var(--color-text);
+  border: 1px solid #35374a;
+}
+
+.teams-primary-btn:disabled,
+.teams-secondary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.teams-selector-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.teams-chip {
+  background: var(--color-primary);
+  color: var(--color-text);
+  border: 1px solid #35374a;
+  border-radius: 999px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.teams-chip small {
+  background: #35374a;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+  padding: 2px 6px;
+}
+
+.teams-chip.active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.teams-selected-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.teams-selected-title h3 {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.teams-selected-title p {
+  margin: 4px 0 0;
+  color: #b3b9c8;
+  font-size: 0.85rem;
+}
+
+.teams-pill {
+  background: #1a1f2c;
+  color: #4ea8de;
+  border: 1px solid #35374a;
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.teams-assignment-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto minmax(260px, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.teams-list-panel {
+  border: 1px solid #35374a;
+  border-radius: 10px;
+  background: #1a1f2c;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.teams-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text);
+}
+
+.teams-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+}
+
+.teams-user-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #2c3244;
+  background: #181a20;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.teams-user-name {
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.teams-user-meta {
+  color: #9ba4b6;
+  font-size: 0.78rem;
+}
+
+.teams-actions-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-width: 156px;
+}
+
+.teams-empty {
+  color: #9ba4b6;
+  text-align: center;
+  padding: 16px 8px;
+  border: 1px dashed #35374a;
+  border-radius: 10px;
+}
+
+@media (max-width: 980px) {
+  .teams-assignment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .teams-actions-col {
+    flex-direction: row;
+    min-width: 0;
+  }
+
+  .teams-create-fields {
+    grid-template-columns: 1fr;
+  }
+}
