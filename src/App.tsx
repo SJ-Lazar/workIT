@@ -4,6 +4,9 @@ import Users from './components/Users';
 import Roles from './components/Roles';
 import Departments from './components/Departments';
 import Teams from './components/Teams';
+import Projects from './components/Projects';
+import Items from './components/Items';
+import { seedProjects } from './data/projects';
 
 const navItems = [
   { key: 'dashboard', label: 'Dashboard', icon: '🏠' },
@@ -17,6 +20,7 @@ const navItems = [
 function App() {
   const [section, setSection] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
+  const [projects, setProjects] = useState(seedProjects);
 
   let mainContent;
   if (section === 'dashboard') {
@@ -35,15 +39,13 @@ function App() {
   } else if (section === 'projects') {
     mainContent = (
       <div>
-        <h1>Projects</h1>
-        <p>View and manage your projects here.</p>
+        <Projects projects={projects} setProjects={setProjects} />
       </div>
     );
   } else if (section === 'items') {
     mainContent = (
       <div>
-        <h1>Items</h1>
-        <p>Browse and manage your items here.</p>
+        <Items projects={projects} />
       </div>
     );
   } else if (section === 'users') {
