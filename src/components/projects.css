@@ -231,6 +231,46 @@
   border-radius: 10px;
 }
 
+body.theme-light .projects-meta {
+  color: #2b7a9b;
+}
+
+body.theme-light .projects-card,
+body.theme-light .projects-item-card {
+  background: #ffffff;
+  border-color: #d9e0ec;
+}
+
+body.theme-light .projects-input,
+body.theme-light .projects-chip,
+body.theme-light .projects-pill {
+  background: #f2f4f8;
+  border-color: #d9e0ec;
+  color: #1b1f2a;
+}
+
+body.theme-light .projects-chip.active {
+  border-color: #1f7a84;
+  color: #1f7a84;
+}
+
+body.theme-light .projects-selected-title p,
+body.theme-light .projects-item-line,
+body.theme-light .projects-muted,
+body.theme-light .projects-empty {
+  color: #6a758a;
+}
+
+body.theme-light .projects-tag {
+  background: #eef1f6;
+  border-color: #d9e0ec;
+  color: #2b7a9b;
+}
+
+body.theme-light .projects-empty {
+  border-color: #d9e0ec;
+}
+
 @media (max-width: 980px) {
   .projects-form-grid.three,
   .projects-form-grid.two {

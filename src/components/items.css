@@ -187,6 +187,64 @@
   border-radius: 10px;
 }
 
+body.theme-light .items-meta {
+  color: #2b7a9b;
+}
+
+body.theme-light .items-controls input,
+body.theme-light .items-controls select {
+  background: #f2f4f8;
+  border-color: #d9e0ec;
+  color: #1b1f2a;
+}
+
+body.theme-light .items-controls input::placeholder {
+  color: #7a8599;
+}
+
+body.theme-light .items-lane,
+body.theme-light .items-card {
+  background: #ffffff;
+  border-color: #d9e0ec;
+}
+
+body.theme-light .items-status {
+  border-color: #d9e0ec;
+}
+
+body.theme-light .items-status.open {
+  color: #b25b0e;
+  background: #fff4e0;
+}
+
+body.theme-light .items-status.done {
+  color: #1f7a3a;
+  background: #e7f7ef;
+}
+
+body.theme-light .items-project {
+  color: #2b7a9b;
+}
+
+body.theme-light .items-line {
+  color: #2c3345;
+}
+
+body.theme-light .items-tag {
+  background: #eef1f6;
+  color: #2b7a9b;
+  border-color: #d9e0ec;
+}
+
+body.theme-light .items-muted,
+body.theme-light .items-empty {
+  color: #6a758a;
+}
+
+body.theme-light .items-empty {
+  border-color: #d9e0ec;
+}
+
 @media (max-width: 980px) {
   .items-controls {
     grid-template-columns: 1fr;

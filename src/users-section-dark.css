@@ -1,10 +1,10 @@
-.users-section-container {
+body:not(.theme-light) .users-section-container {
   padding: 32px 24px;
   background: #181a20;
   min-height: 100vh;
 }
 
-.users-section-title {
+body:not(.theme-light) .users-section-title {
   font-size: 2.2rem;
   font-weight: 700;
   color: #f3f4f6;
@@ -12,14 +12,14 @@
   letter-spacing: 0.5px;
 }
 
-.users-section-cards {
+body:not(.theme-light) .users-section-cards {
   display: flex;
   gap: 32px;
   justify-content: center;
   margin-top: 24px;
 }
 
-.users-section-card {
+body:not(.theme-light) .users-section-card {
   background: #23263a;
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(34,34,59,0.18);
@@ -35,31 +35,31 @@
   align-items: center;
 }
 
-.users-section-card:hover {
+body:not(.theme-light) .users-section-card:hover {
   box-shadow: 0 8px 32px rgba(34,34,59,0.32);
   border-color: #4ea8de;
   transform: translateY(-2px) scale(1.03);
 }
 
-.users-section-card-icon {
+body:not(.theme-light) .users-section-card-icon {
   font-size: 2.5rem;
   margin-bottom: 12px;
 }
 
-.users-section-card h3 {
+body:not(.theme-light) .users-section-card h3 {
   font-size: 1.3rem;
   font-weight: 600;
   color: #f3f4f6;
   margin-bottom: 8px;
 }
 
-.users-section-card p {
+body:not(.theme-light) .users-section-card p {
   color: #4ea8de;
   font-size: 1rem;
   margin-bottom: 0;
 }
 
-.users-section-detail {
+body:not(.theme-light) .users-section-detail {
   margin-top: 32px;
   background: #23263a;
   border-radius: 12px;
@@ -67,7 +67,7 @@
   padding: 32px 24px;
 }
 
-.users-section-back {
+body:not(.theme-light) .users-section-back {
   background: none;
   border: none;
   color: #4ea8de;
@@ -78,6 +78,6 @@
   transition: color 0.2s;
 }
 
-.users-section-back:hover {
+body:not(.theme-light) .users-section-back:hover {
   color: #f3f4f6;
 }

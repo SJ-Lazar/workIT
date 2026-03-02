@@ -214,6 +214,46 @@
   border-radius: 10px;
 }
 
+body.theme-light .teams-meta {
+  color: #2b7a9b;
+}
+
+body.theme-light .teams-create-card,
+body.theme-light .teams-assignment-card,
+body.theme-light .teams-list-panel,
+body.theme-light .teams-user-row {
+  background: #ffffff;
+  border-color: #d9e0ec;
+}
+
+body.theme-light .teams-input,
+body.theme-light .teams-secondary-btn,
+body.theme-light .teams-chip,
+body.theme-light .teams-pill {
+  background: #f2f4f8;
+  border-color: #d9e0ec;
+  color: #1b1f2a;
+}
+
+body.theme-light .teams-chip small {
+  background: #e1e6ef;
+}
+
+body.theme-light .teams-chip.active {
+  border-color: #1f7a84;
+  color: #1f7a84;
+}
+
+body.theme-light .teams-selected-title p,
+body.theme-light .teams-user-meta,
+body.theme-light .teams-empty {
+  color: #6a758a;
+}
+
+body.theme-light .teams-empty {
+  border-color: #d9e0ec;
+}
+
 @media (max-width: 980px) {
   .teams-assignment-grid {
     grid-template-columns: 1fr;
