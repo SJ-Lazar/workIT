@@ -37,6 +37,7 @@ const makeUniqueId = (name: string, existingIds: string[]) => {
 const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
   const [activeProjectId, setActiveProjectId] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isWorkItemDialogOpen, setIsWorkItemDialogOpen] = useState(false);
 
   const [projectName, setProjectName] = useState('');
   const [projectStartDate, setProjectStartDate] = useState('');
@@ -110,13 +111,13 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
 
   const handleCreateWorkItem = () => {
     if (!activeProject || !itemTitle.trim() || !itemStartDate || !itemEtaDate) {
-      return;
+      return false;
     }
 
     const existingItemIds = activeProject.workItems.map(item => item.id);
     const itemId = makeUniqueId(itemTitle, existingItemIds);
     if (!itemId) {
-      return;
+      return false;
     }
 
     const comments = itemComments
@@ -163,6 +164,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
     );
 
     clearWorkItemForm();
+    return true;
   };
 
   const renderAssigneeNames = (workItem: WorkItem) => {
@@ -205,12 +207,29 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
 
   const handleOpenProject = (projectId: string) => {
     clearWorkItemForm();
+    setIsWorkItemDialogOpen(false);
     setActiveProjectId(projectId);
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
+    setIsWorkItemDialogOpen(false);
     setIsDialogOpen(false);
+  };
+
+  const handleOpenWorkItemDialog = () => {
+    clearWorkItemForm();
+    setIsWorkItemDialogOpen(true);
+  };
+
+  const handleCloseWorkItemDialog = () => {
+    setIsWorkItemDialogOpen(false);
+  };
+
+  const handleSubmitWorkItem = () => {
+    if (handleCreateWorkItem()) {
+      setIsWorkItemDialogOpen(false);
+    }
   };
 
   return (
@@ -380,109 +399,19 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
             </div>
 
             <div className="projects-dialog-section">
-              <h4>Add work item</h4>
-              <div className="projects-form-grid two">
-                <input
-                  className="projects-input"
-                  placeholder="Work item title"
-                  value={itemTitle}
-                  onChange={event => setItemTitle(event.target.value)}
-                />
-                <input
-                  className="projects-input"
-                  placeholder="Description"
-                  value={itemDescription}
-                  onChange={event => setItemDescription(event.target.value)}
-                />
-                <input
-                  className="projects-input"
-                  type="date"
-                  value={itemStartDate}
-                  onChange={event => setItemStartDate(event.target.value)}
-                  title="Work item start date"
-                />
-                <input
-                  className="projects-input"
-                  type="date"
-                  value={itemEtaDate}
-                  onChange={event => setItemEtaDate(event.target.value)}
-                  title="Work item ETA date"
-                />
-                <input
-                  className="projects-input"
-                  type="date"
-                  value={itemCompleteDate}
-                  onChange={event => setItemCompleteDate(event.target.value)}
-                  title="Work item completed date"
-                />
-                <input
-                  className="projects-input"
-                  placeholder="Tags (comma separated)"
-                  value={itemTags}
-                  onChange={event => setItemTags(event.target.value)}
-                />
-              </div>
-
-              <div className="projects-form-grid two compact">
-                <select
-                  className="projects-input"
-                  multiple
-                  value={itemAssignedUserIds}
-                  onChange={event =>
-                    setItemAssignedUserIds(Array.from(event.target.selectedOptions, option => option.value))
-                  }
+              <div className="projects-dialog-action-row">
+                <div>
+                  <h4>Add work item</h4>
+                  <p className="projects-muted">Capture new tasks in a focused editor.</p>
+                </div>
+                <button
+                  className="projects-primary-btn"
+                  type="button"
+                  onClick={handleOpenWorkItemDialog}
                 >
-                  {seedUsers.map(user => (
-                    <option key={user.userId} value={user.userId}>
-                      {`${user.firstName} ${user.lastName}`.trim()} ({user.userId})
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  className="projects-input"
-                  multiple
-                  value={itemAssignedTeamIds}
-                  onChange={event =>
-                    setItemAssignedTeamIds(Array.from(event.target.selectedOptions, option => option.value))
-                  }
-                >
-                  {seedTeams.map(team => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
+                  Add Work Item
+                </button>
               </div>
-
-              <div className="projects-form-grid two">
-                <textarea
-                  className="projects-input projects-textarea"
-                  placeholder="Notes"
-                  value={itemNotes}
-                  onChange={event => setItemNotes(event.target.value)}
-                />
-                <textarea
-                  className="projects-input projects-textarea"
-                  placeholder="Comments (one per line)"
-                  value={itemComments}
-                  onChange={event => setItemComments(event.target.value)}
-                />
-                <textarea
-                  className="projects-input projects-textarea full"
-                  placeholder="Attachments (one URL or file path per line)"
-                  value={itemAttachments}
-                  onChange={event => setItemAttachments(event.target.value)}
-                />
-              </div>
-
-              <button
-                className="projects-primary-btn"
-                onClick={handleCreateWorkItem}
-                disabled={!itemTitle.trim() || !itemStartDate || !itemEtaDate}
-              >
-                Add Work Item
-              </button>
             </div>
 
             <div className="projects-dialog-section">
@@ -546,6 +475,127 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
                   <div className="projects-empty">No work items added yet.</div>
                 ) : null}
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isDialogOpen && isWorkItemDialogOpen ? (
+        <div className="projects-subdialog-backdrop" onClick={handleCloseWorkItemDialog}>
+          <div className="projects-subdialog" onClick={event => event.stopPropagation()}>
+            <div className="projects-subdialog-header">
+              <h4>Add work item</h4>
+              <button className="projects-dialog-close" type="button" onClick={handleCloseWorkItemDialog}>
+                Close
+              </button>
+            </div>
+
+            <div className="projects-form-grid two">
+              <input
+                className="projects-input"
+                placeholder="Work item title"
+                value={itemTitle}
+                onChange={event => setItemTitle(event.target.value)}
+              />
+              <input
+                className="projects-input"
+                placeholder="Description"
+                value={itemDescription}
+                onChange={event => setItemDescription(event.target.value)}
+              />
+              <input
+                className="projects-input"
+                type="date"
+                value={itemStartDate}
+                onChange={event => setItemStartDate(event.target.value)}
+                title="Work item start date"
+              />
+              <input
+                className="projects-input"
+                type="date"
+                value={itemEtaDate}
+                onChange={event => setItemEtaDate(event.target.value)}
+                title="Work item ETA date"
+              />
+              <input
+                className="projects-input"
+                type="date"
+                value={itemCompleteDate}
+                onChange={event => setItemCompleteDate(event.target.value)}
+                title="Work item completed date"
+              />
+              <input
+                className="projects-input"
+                placeholder="Tags (comma separated)"
+                value={itemTags}
+                onChange={event => setItemTags(event.target.value)}
+              />
+            </div>
+
+            <div className="projects-form-grid two compact">
+              <select
+                className="projects-input"
+                multiple
+                value={itemAssignedUserIds}
+                onChange={event =>
+                  setItemAssignedUserIds(Array.from(event.target.selectedOptions, option => option.value))
+                }
+              >
+                {seedUsers.map(user => (
+                  <option key={user.userId} value={user.userId}>
+                    {`${user.firstName} ${user.lastName}`.trim()} ({user.userId})
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="projects-input"
+                multiple
+                value={itemAssignedTeamIds}
+                onChange={event =>
+                  setItemAssignedTeamIds(Array.from(event.target.selectedOptions, option => option.value))
+                }
+              >
+                {seedTeams.map(team => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="projects-form-grid two">
+              <textarea
+                className="projects-input projects-textarea"
+                placeholder="Notes"
+                value={itemNotes}
+                onChange={event => setItemNotes(event.target.value)}
+              />
+              <textarea
+                className="projects-input projects-textarea"
+                placeholder="Comments (one per line)"
+                value={itemComments}
+                onChange={event => setItemComments(event.target.value)}
+              />
+              <textarea
+                className="projects-input projects-textarea full"
+                placeholder="Attachments (one URL or file path per line)"
+                value={itemAttachments}
+                onChange={event => setItemAttachments(event.target.value)}
+              />
+            </div>
+
+            <div className="projects-dialog-actions">
+              <button className="projects-dialog-close" type="button" onClick={handleCloseWorkItemDialog}>
+                Cancel
+              </button>
+              <button
+                className="projects-primary-btn"
+                onClick={handleSubmitWorkItem}
+                disabled={!itemTitle.trim() || !itemStartDate || !itemEtaDate}
+              >
+                Save Work Item
+              </button>
             </div>
           </div>
         </div>

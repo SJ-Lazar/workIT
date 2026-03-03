@@ -323,6 +323,58 @@
   margin: 0 0 10px;
 }
 
+.projects-dialog-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.projects-dialog-action-row h4 {
+  margin: 0;
+}
+
+.projects-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.projects-subdialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 22, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 40;
+}
+
+.projects-subdialog {
+  width: min(720px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--color-secondary);
+  border: 1px solid #35374a;
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.projects-subdialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.projects-subdialog-header h4 {
+  margin: 0;
+}
+
 .projects-item-card {
   border: 1px solid #35374a;
   border-radius: 10px;
@@ -430,6 +482,11 @@ body.theme-light .projects-dialog-close {
   color: #1b1f2a;
 }
 
+body.theme-light .projects-subdialog {
+  background: #ffffff;
+  border-color: #d9e0ec;
+}
+
 body.theme-light .projects-progress-fill {
   background: #1f7a84;
 }
@@ -473,6 +530,16 @@ body.theme-light .projects-dialog {
   }
 
   .projects-dialog {
+    width: 100%;
+    max-height: 92vh;
+  }
+
+  .projects-dialog-action-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .projects-subdialog {
     width: 100%;
     max-height: 92vh;
   }
