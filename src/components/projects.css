@@ -323,6 +323,83 @@
   margin: 0 0 10px;
 }
 
+.projects-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.projects-lane {
+  border: 1px solid #35374a;
+  border-radius: 12px;
+  background: #1a1f2c;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.projects-lane-header {
+  border: none;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.projects-lane-header h5 {
+  margin: 0 0 4px;
+}
+
+.projects-lane-toggle {
+  font-size: 0.8rem;
+  color: #9ba4b6;
+}
+
+.projects-lane-list {
+  display: grid;
+  gap: 8px;
+}
+
+.projects-item-mini {
+  text-align: left;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.projects-item-mini:active {
+  cursor: grabbing;
+}
+
+.projects-item-mini.dragging {
+  opacity: 0.6;
+}
+
+.projects-item-mini h6 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.projects-item-mini-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.projects-item-mini-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .projects-dialog-action-row {
   display: flex;
   align-items: center;
@@ -482,6 +559,11 @@ body.theme-light .projects-dialog-close {
   color: #1b1f2a;
 }
 
+body.theme-light .projects-lane {
+  background: #f7f9fc;
+  border-color: #d9e0ec;
+}
+
 body.theme-light .projects-subdialog {
   background: #ffffff;
   border-color: #d9e0ec;
@@ -542,5 +624,9 @@ body.theme-light .projects-dialog {
   .projects-subdialog {
     width: 100%;
     max-height: 92vh;
+  }
+
+  .projects-lanes {
+    grid-template-columns: 1fr;
   }
 }

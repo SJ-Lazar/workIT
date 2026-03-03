@@ -38,6 +38,13 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
   const [activeProjectId, setActiveProjectId] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isWorkItemDialogOpen, setIsWorkItemDialogOpen] = useState(false);
+  const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItem | null>(null);
+  const [draggingItemId, setDraggingItemId] = useState('');
+  const [laneCollapsed, setLaneCollapsed] = useState({
+    backlog: false,
+    inProgress: false,
+    done: false,
+  });
 
   const [projectName, setProjectName] = useState('');
   const [projectStartDate, setProjectStartDate] = useState('');
@@ -140,6 +147,13 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
       .map(value => value.trim())
       .filter(Boolean);
 
+    const today = new Date().toISOString().slice(0, 10);
+    const defaultStatus = itemCompleteDate
+      ? 'done'
+      : itemStartDate > today
+        ? 'backlog'
+        : 'inProgress';
+
     const newItem: WorkItem = {
       id: itemId,
       title: itemTitle.trim(),
@@ -147,6 +161,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
       startDate: itemStartDate,
       etaDate: itemEtaDate,
       completedDate: itemCompleteDate,
+      status: defaultStatus,
       assignedUserIds: itemAssignedUserIds,
       assignedTeamIds: itemAssignedTeamIds,
       notes: itemNotes.trim(),
@@ -208,12 +223,15 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
   const handleOpenProject = (projectId: string) => {
     clearWorkItemForm();
     setIsWorkItemDialogOpen(false);
+    setSelectedWorkItem(null);
     setActiveProjectId(projectId);
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setIsWorkItemDialogOpen(false);
+    setSelectedWorkItem(null);
+    setDraggingItemId('');
     setIsDialogOpen(false);
   };
 
@@ -230,6 +248,86 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
     if (handleCreateWorkItem()) {
       setIsWorkItemDialogOpen(false);
     }
+  };
+
+  const getWorkItemStatus = (workItem: WorkItem) => {
+    if (workItem.status) {
+      return workItem.status;
+    }
+    if (workItem.completedDate) {
+      return 'done';
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    if (workItem.startDate && workItem.startDate > today) {
+      return 'backlog';
+    }
+    return 'inProgress';
+  };
+
+  const lanes = [
+    { id: 'backlog', label: 'Backlog' },
+    { id: 'inProgress', label: 'In progress' },
+    { id: 'done', label: 'Done' },
+  ];
+
+  const getLaneItems = (workItems: WorkItem[], laneId: string) =>
+    workItems.filter(item => getWorkItemStatus(item) === laneId);
+
+  const toggleLane = (laneId: 'backlog' | 'inProgress' | 'done') => {
+    setLaneCollapsed(prev => ({ ...prev, [laneId]: !prev[laneId] }));
+  };
+
+  const handleOpenWorkItemDetail = (workItem: WorkItem) => {
+    setSelectedWorkItem(workItem);
+  };
+
+  const handleCloseWorkItemDetail = () => {
+    setSelectedWorkItem(null);
+  };
+
+  const handleDragStart = (event: React.DragEvent<HTMLButtonElement>, workItem: WorkItem) => {
+    event.dataTransfer.setData('text/plain', workItem.id);
+    event.dataTransfer.effectAllowed = 'move';
+    setDraggingItemId(workItem.id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingItemId('');
+  };
+
+  const handleDropOnLane = (laneId: 'backlog' | 'inProgress' | 'done') => {
+    if (!activeProject || !draggingItemId) {
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    setProjects(prev =>
+      prev.map(project => {
+        if (project.id !== activeProject.id) {
+          return project;
+        }
+        return {
+          ...project,
+          workItems: project.workItems.map(item => {
+            if (item.id !== draggingItemId) {
+              return item;
+            }
+            const completedDate =
+              laneId === 'done'
+                ? item.completedDate || today
+                : item.completedDate
+                  ? ''
+                  : item.completedDate;
+            return {
+              ...item,
+              status: laneId,
+              completedDate,
+            };
+          }),
+        };
+      })
+    );
+    setSelectedWorkItem(null);
+    setDraggingItemId('');
   };
 
   return (
@@ -416,65 +514,84 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
 
             <div className="projects-dialog-section">
               <h4>Work items</h4>
-              <div className="projects-items-list">
-                {activeProject.workItems.map(workItem => (
-                  <article key={workItem.id} className="projects-item-card">
-                    <div className="projects-item-head">
-                      <h4>{workItem.title}</h4>
-                      <span className="projects-item-dates">
-                        {workItem.startDate} → ETA {workItem.etaDate}
-                        {workItem.completedDate ? ` → Done ${workItem.completedDate}` : ''}
-                      </span>
-                    </div>
+              {activeProject.workItems.length === 0 ? (
+                <div className="projects-empty">No work items added yet.</div>
+              ) : (
+                <div className="projects-lanes">
+                  {lanes.map(lane => {
+                    const items = getLaneItems(activeProject.workItems, lane.id);
+                    const collapsed = laneCollapsed[lane.id as keyof typeof laneCollapsed];
+                    return (
+                      <section
+                        key={lane.id}
+                        className="projects-lane"
+                        onDragOver={event => event.preventDefault()}
+                        onDrop={() => handleDropOnLane(lane.id as 'backlog' | 'inProgress' | 'done')}
+                      >
+                        <button
+                          className="projects-lane-header"
+                          type="button"
+                          onClick={() => toggleLane(lane.id as 'backlog' | 'inProgress' | 'done')}
+                        >
+                          <div>
+                            <h5>{lane.label}</h5>
+                            <span className="projects-muted">{items.length} items</span>
+                          </div>
+                          <span className="projects-lane-toggle">
+                            {collapsed ? 'Expand' : 'Collapse'}
+                          </span>
+                        </button>
 
-                    <p className="projects-item-description">{workItem.description || 'No description.'}</p>
-                    <p className="projects-item-line"><strong>Assigned:</strong> {renderAssigneeNames(workItem)}</p>
-                    <p className="projects-item-line"><strong>Notes:</strong> {workItem.notes || 'None'}</p>
-
-                    <div className="projects-item-block">
-                      <strong>Tags:</strong>
-                      <div className="projects-tag-row">
-                        {workItem.tags.length > 0
-                          ? workItem.tags.map(tag => (
-                              <span key={`${workItem.id}-${tag}`} className="projects-tag">
-                                {tag}
-                              </span>
-                            ))
-                          : <span className="projects-muted">No tags</span>}
-                      </div>
-                    </div>
-
-                    <div className="projects-item-block">
-                      <strong>Comments:</strong>
-                      {workItem.comments.length > 0 ? (
-                        <ul className="projects-list">
-                          {workItem.comments.map(comment => (
-                            <li key={comment.id}>{comment.text} <span className="projects-muted">({comment.createdAt})</span></li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="projects-muted">No comments</p>
-                      )}
-                    </div>
-
-                    <div className="projects-item-block">
-                      <strong>Attachments:</strong>
-                      {workItem.attachments.length > 0 ? (
-                        <ul className="projects-list">
-                          {workItem.attachments.map(attachment => (
-                            <li key={`${workItem.id}-${attachment}`}>{attachment}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="projects-muted">No attachments</p>
-                      )}
-                    </div>
-                  </article>
-                ))}
-                {activeProject.workItems.length === 0 ? (
-                  <div className="projects-empty">No work items added yet.</div>
-                ) : null}
-              </div>
+                        {!collapsed ? (
+                          <div className="projects-lane-list">
+                            {items.length === 0 ? (
+                              <div className="projects-empty">No items in this lane.</div>
+                            ) : (
+                              items.map(workItem => (
+                                <button
+                                  key={workItem.id}
+                                  className={`projects-item-card projects-item-mini${draggingItemId === workItem.id ? ' dragging' : ''}`}
+                                  type="button"
+                                  draggable
+                                  onClick={() => handleOpenWorkItemDetail(workItem)}
+                                  onDragStart={event => handleDragStart(event, workItem)}
+                                  onDragEnd={handleDragEnd}
+                                >
+                                  <div className="projects-item-mini-head">
+                                    <h6>{workItem.title}</h6>
+                                    <span className="projects-item-dates">
+                                      ETA {workItem.etaDate}
+                                    </span>
+                                  </div>
+                                  <div className="projects-item-mini-meta">
+                                    <span className="projects-muted">
+                                      {workItem.description || 'No description.'}
+                                    </span>
+                                    <div className="projects-badge-row">
+                                      {workItem.assignedUserIds.length > 0 ? (
+                                        workItem.assignedUserIds.slice(0, 3).map(userId => (
+                                          <span key={`${workItem.id}-${userId}`} className="projects-user-badge">
+                                            {getUserInitials(userId)}
+                                          </span>
+                                        ))
+                                      ) : (
+                                        <span className="projects-muted">Unassigned</span>
+                                      )}
+                                      {workItem.assignedUserIds.length > 3 ? (
+                                        <span className="projects-user-badge">+{workItem.assignedUserIds.length - 3}</span>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        ) : null}
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -596,6 +713,70 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
               >
                 Save Work Item
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isDialogOpen && selectedWorkItem ? (
+        <div className="projects-subdialog-backdrop" onClick={handleCloseWorkItemDetail}>
+          <div className="projects-subdialog" onClick={event => event.stopPropagation()}>
+            <div className="projects-subdialog-header">
+              <div>
+                <h4>{selectedWorkItem.title}</h4>
+                <p className="projects-item-dates">
+                  {selectedWorkItem.startDate} → ETA {selectedWorkItem.etaDate}
+                  {selectedWorkItem.completedDate ? ` → Done ${selectedWorkItem.completedDate}` : ''}
+                </p>
+              </div>
+              <button className="projects-dialog-close" type="button" onClick={handleCloseWorkItemDetail}>
+                Close
+              </button>
+            </div>
+
+            <p className="projects-item-description">
+              {selectedWorkItem.description || 'No description.'}
+            </p>
+            <p className="projects-item-line"><strong>Assigned:</strong> {renderAssigneeNames(selectedWorkItem)}</p>
+            <p className="projects-item-line"><strong>Notes:</strong> {selectedWorkItem.notes || 'None'}</p>
+
+            <div className="projects-item-block">
+              <strong>Tags:</strong>
+              <div className="projects-tag-row">
+                {selectedWorkItem.tags.length > 0
+                  ? selectedWorkItem.tags.map(tag => (
+                      <span key={`${selectedWorkItem.id}-${tag}`} className="projects-tag">
+                        {tag}
+                      </span>
+                    ))
+                  : <span className="projects-muted">No tags</span>}
+              </div>
+            </div>
+
+            <div className="projects-item-block">
+              <strong>Comments:</strong>
+              {selectedWorkItem.comments.length > 0 ? (
+                <ul className="projects-list">
+                  {selectedWorkItem.comments.map(comment => (
+                    <li key={comment.id}>{comment.text} <span className="projects-muted">({comment.createdAt})</span></li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="projects-muted">No comments</p>
+              )}
+            </div>
+
+            <div className="projects-item-block">
+              <strong>Attachments:</strong>
+              {selectedWorkItem.attachments.length > 0 ? (
+                <ul className="projects-list">
+                  {selectedWorkItem.attachments.map(attachment => (
+                    <li key={`${selectedWorkItem.id}-${attachment}`}>{attachment}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="projects-muted">No attachments</p>
+              )}
             </div>
           </div>
         </div>
