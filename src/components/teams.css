@@ -268,3 +268,20 @@ body.theme-light .teams-empty {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .teams-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .teams-create-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .teams-primary-btn,
+  .teams-secondary-btn {
+    width: 100%;
+  }
+}

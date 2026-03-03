@@ -6,6 +6,7 @@ import './items.css';
 
 interface ItemsProps {
   projects: Project[];
+  showHiddenItems: boolean;
 }
 
 type FlattenedItem = {
@@ -14,7 +15,7 @@ type FlattenedItem = {
   item: WorkItem;
 };
 
-const Items: React.FC<ItemsProps> = ({ projects }) => {
+const Items: React.FC<ItemsProps> = ({ projects, showHiddenItems }) => {
   const [searchText, setSearchText] = useState('');
   const [projectFilter, setProjectFilter] = useState('all');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
@@ -22,13 +23,15 @@ const Items: React.FC<ItemsProps> = ({ projects }) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const allItems = useMemo<FlattenedItem[]>(() => {
     return projects.flatMap(project =>
-      project.workItems.map(item => ({
+      project.workItems
+        .filter(item => showHiddenItems || !item.deletedAt)
+        .map(item => ({
         projectId: project.id,
         projectName: project.name,
         item,
-      }))
+        }))
     );
-  }, [projects]);
+  }, [projects, showHiddenItems]);
 
   const completedCount = allItems.filter(({ item }) => Boolean(item.completedDate)).length;
 

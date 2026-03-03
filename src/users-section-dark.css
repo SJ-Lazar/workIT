@@ -81,3 +81,25 @@ body:not(.theme-light) .users-section-back {
 body:not(.theme-light) .users-section-back:hover {
   color: #f3f4f6;
 }
+
+@media (max-width: 900px) {
+  body:not(.theme-light) .users-section-cards {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  body:not(.theme-light) .users-section-card {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  body:not(.theme-light) .users-section-container {
+    padding: 24px 16px;
+  }
+
+  body:not(.theme-light) .users-section-title {
+    font-size: 1.8rem;
+  }
+}

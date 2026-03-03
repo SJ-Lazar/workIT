@@ -26,18 +26,24 @@ function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [projects, setProjects] = useState(seedProjects);
   const [isLightMode, setIsLightMode] = useState(false);
+  const [showHiddenItems, setShowHiddenItems] = useState(false);
 
   useEffect(() => {
     document.body.classList.toggle('theme-light', isLightMode);
   }, [isLightMode]);
 
   const dashboardStats = useMemo(() => {
-    const allItems = projects.flatMap(project => project.workItems);
+    const allItems = projects
+      .flatMap(project => project.workItems)
+      .filter(item => showHiddenItems || !item.deletedAt);
     const completedItems = allItems.filter(item => Boolean(item.completedDate)).length;
     const openItems = allItems.length - completedItems;
-    const projectsWithOpenItems = projects.filter(project =>
-      project.workItems.some(item => !item.completedDate)
-    ).length;
+    const projectsWithOpenItems = projects.filter(project => {
+      const visibleItems = showHiddenItems
+        ? project.workItems
+        : project.workItems.filter(item => !item.deletedAt);
+      return visibleItems.some(item => !item.completedDate);
+    }).length;
 
     return {
       totalProjects: projects.length,
@@ -50,10 +56,12 @@ function App() {
       totalRoles: seedRoles.length,
       totalDepartments: seedDepartments.length,
     };
-  }, [projects]);
+  }, [projects, showHiddenItems]);
 
   const dashboardCharts = useMemo(() => {
-    const allItems = projects.flatMap(project => project.workItems);
+    const allItems = projects
+      .flatMap(project => project.workItems)
+      .filter(item => showHiddenItems || !item.deletedAt);
     const completedItems = allItems.filter(item => Boolean(item.completedDate)).length;
     const openItems = allItems.length - completedItems;
     const totalItems = allItems.length || 1;
@@ -62,7 +70,9 @@ function App() {
       .map(project => ({
         id: project.id,
         name: project.name,
-        count: project.workItems.length,
+        count: showHiddenItems
+          ? project.workItems.length
+          : project.workItems.filter(item => !item.deletedAt).length,
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -78,7 +88,7 @@ function App() {
       itemsByProject,
       maxProjectItems,
     };
-  }, [projects]);
+  }, [projects, showHiddenItems]);
 
   let mainContent;
   if (section === 'dashboard') {
@@ -188,13 +198,13 @@ function App() {
   } else if (section === 'projects') {
     mainContent = (
       <div>
-        <Projects projects={projects} setProjects={setProjects} />
+        <Projects projects={projects} setProjects={setProjects} showHiddenItems={showHiddenItems} />
       </div>
     );
   } else if (section === 'items') {
     mainContent = (
       <div>
-        <Items projects={projects} />
+        <Items projects={projects} showHiddenItems={showHiddenItems} />
       </div>
     );
   } else if (section === 'timelines') {
@@ -230,6 +240,21 @@ function App() {
               type="checkbox"
               checked={isLightMode}
               onChange={event => setIsLightMode(event.target.checked)}
+            />
+          </label>
+        </div>
+
+        <div className="settings-card">
+          <div>
+            <h3>Work items</h3>
+            <p>Reveal tasks that have been hidden from boards.</p>
+          </div>
+          <label className="toggle-row">
+            <span>Show hidden items</span>
+            <input
+              type="checkbox"
+              checked={showHiddenItems}
+              onChange={event => setShowHiddenItems(event.target.checked)}
             />
           </label>
         </div>

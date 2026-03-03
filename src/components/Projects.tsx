@@ -7,6 +7,7 @@ import './projects.css';
 interface ProjectsProps {
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  showHiddenItems: boolean;
 }
 
 const toId = (value: string) =>
@@ -34,12 +35,25 @@ const makeUniqueId = (name: string, existingIds: string[]) => {
   return `${base}-${i}`;
 };
 
-const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
+const Projects: React.FC<ProjectsProps> = ({ projects, setProjects, showHiddenItems }) => {
   const [activeProjectId, setActiveProjectId] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isWorkItemDialogOpen, setIsWorkItemDialogOpen] = useState(false);
+  const [isAssigneeDialogOpen, setIsAssigneeDialogOpen] = useState(false);
+  const [assigneeSearch, setAssigneeSearch] = useState('');
   const [selectedWorkItem, setSelectedWorkItem] = useState<WorkItem | null>(null);
   const [draggingItemId, setDraggingItemId] = useState('');
+  const [editingWorkItemId, setEditingWorkItemId] = useState<string | null>(null);
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [inlineTitle, setInlineTitle] = useState('');
+  const [inlineEta, setInlineEta] = useState('');
+  const [expandedSections, setExpandedSections] = useState({
+    details: false,
+    schedule: false,
+    tags: false,
+    notes: false,
+    attachments: false,
+  });
   const [laneCollapsed, setLaneCollapsed] = useState({
     backlog: false,
     inProgress: false,
@@ -67,6 +81,28 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
     [projects, activeProjectId]
   );
 
+  const visibleWorkItems = useMemo(() => {
+    if (!activeProject) {
+      return [] as WorkItem[];
+    }
+    return showHiddenItems
+      ? activeProject.workItems
+      : activeProject.workItems.filter(item => !item.deletedAt);
+  }, [activeProject, showHiddenItems]);
+
+  const userTaskCounts = useMemo(() => {
+    if (!activeProject) {
+      return {} as Record<string, number>;
+    }
+    const sourceItems = showHiddenItems ? activeProject.workItems : visibleWorkItems;
+    return sourceItems.reduce<Record<string, number>>((counts, item) => {
+      item.assignedUserIds.forEach(userId => {
+        counts[userId] = (counts[userId] ?? 0) + 1;
+      });
+      return counts;
+    }, {});
+  }, [activeProject, showHiddenItems, visibleWorkItems]);
+
   useEffect(() => {
     if (isDialogOpen && !activeProject) {
       setIsDialogOpen(false);
@@ -85,6 +121,31 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
     setItemTags('');
     setItemAssignedUserIds([]);
     setItemAssignedTeamIds([]);
+  };
+
+  const populateWorkItemForm = (workItem: WorkItem) => {
+    setItemTitle(workItem.title);
+    setItemDescription(workItem.description);
+    setItemStartDate(workItem.startDate);
+    setItemEtaDate(workItem.etaDate);
+    setItemCompleteDate(workItem.completedDate);
+    setItemNotes(workItem.notes);
+    setItemComments(workItem.comments.map(comment => comment.text).join('\n'));
+    setItemAttachments(workItem.attachments.join('\n'));
+    setItemTags(workItem.tags.join(', '));
+    setItemAssignedUserIds(workItem.assignedUserIds);
+    setItemAssignedTeamIds(workItem.assignedTeamIds);
+  };
+
+  const computeStatusFromDates = (startDate: string, completedDate: string) => {
+    if (completedDate) {
+      return 'done';
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    if (startDate && startDate > today) {
+      return 'backlog';
+    }
+    return 'inProgress';
   };
 
   const handleCreateProject = () => {
@@ -147,12 +208,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
       .map(value => value.trim())
       .filter(Boolean);
 
-    const today = new Date().toISOString().slice(0, 10);
-    const defaultStatus = itemCompleteDate
-      ? 'done'
-      : itemStartDate > today
-        ? 'backlog'
-        : 'inProgress';
+    const defaultStatus = computeStatusFromDates(itemStartDate, itemCompleteDate);
 
     const newItem: WorkItem = {
       id: itemId,
@@ -162,6 +218,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
       etaDate: itemEtaDate,
       completedDate: itemCompleteDate,
       status: defaultStatus,
+      deletedAt: '',
       assignedUserIds: itemAssignedUserIds,
       assignedTeamIds: itemAssignedTeamIds,
       notes: itemNotes.trim(),
@@ -179,6 +236,68 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
     );
 
     clearWorkItemForm();
+    return true;
+  };
+
+  const handleUpdateWorkItem = () => {
+    if (!activeProject || !editingWorkItemId || !itemTitle.trim() || !itemStartDate || !itemEtaDate) {
+      return false;
+    }
+
+    const comments = itemComments
+      .split('\n')
+      .map(comment => comment.trim())
+      .filter(Boolean)
+      .map((text, index) => ({
+        id: `${editingWorkItemId}-comment-${index + 1}`,
+        text,
+        createdAt: new Date().toISOString().slice(0, 10),
+      }));
+
+    const attachments = itemAttachments
+      .split('\n')
+      .map(value => value.trim())
+      .filter(Boolean);
+
+    const tags = itemTags
+      .split(',')
+      .map(value => value.trim())
+      .filter(Boolean);
+
+    const nextStatus = computeStatusFromDates(itemStartDate, itemCompleteDate);
+
+    setProjects(prev =>
+      prev.map(project => {
+        if (project.id !== activeProject.id) {
+          return project;
+        }
+        return {
+          ...project,
+          workItems: project.workItems.map(item =>
+            item.id === editingWorkItemId
+              ? {
+                  ...item,
+                  title: itemTitle.trim(),
+                  description: itemDescription.trim(),
+                  startDate: itemStartDate,
+                  etaDate: itemEtaDate,
+                  completedDate: itemCompleteDate,
+                  status: nextStatus,
+                  assignedUserIds: itemAssignedUserIds,
+                  assignedTeamIds: itemAssignedTeamIds,
+                  notes: itemNotes.trim(),
+                  comments,
+                  attachments,
+                  tags,
+                }
+              : item
+          ),
+        };
+      })
+    );
+
+    clearWorkItemForm();
+    setEditingWorkItemId(null);
     return true;
   };
 
@@ -224,28 +343,46 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
     clearWorkItemForm();
     setIsWorkItemDialogOpen(false);
     setSelectedWorkItem(null);
+    setEditingWorkItemId(null);
+    setInlineEditId(null);
     setActiveProjectId(projectId);
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setIsWorkItemDialogOpen(false);
+    setIsAssigneeDialogOpen(false);
     setSelectedWorkItem(null);
+    setEditingWorkItemId(null);
+    setInlineEditId(null);
     setDraggingItemId('');
     setIsDialogOpen(false);
   };
 
   const handleOpenWorkItemDialog = () => {
     clearWorkItemForm();
+    setEditingWorkItemId(null);
+    setIsAssigneeDialogOpen(false);
+    setExpandedSections({
+      details: false,
+      schedule: false,
+      tags: false,
+      notes: false,
+      attachments: false,
+    });
     setIsWorkItemDialogOpen(true);
   };
 
   const handleCloseWorkItemDialog = () => {
     setIsWorkItemDialogOpen(false);
+    setEditingWorkItemId(null);
+    setIsAssigneeDialogOpen(false);
   };
 
   const handleSubmitWorkItem = () => {
-    if (handleCreateWorkItem()) {
+    const didSave = editingWorkItemId ? handleUpdateWorkItem() : handleCreateWorkItem();
+    if (didSave) {
+      setIsAssigneeDialogOpen(false);
       setIsWorkItemDialogOpen(false);
     }
   };
@@ -283,6 +420,140 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
 
   const handleCloseWorkItemDetail = () => {
     setSelectedWorkItem(null);
+  };
+
+  const handleOpenAssigneeDialog = () => {
+    setAssigneeSearch('');
+    setIsAssigneeDialogOpen(true);
+  };
+
+  const handleCloseAssigneeDialog = () => {
+    setIsAssigneeDialogOpen(false);
+    setAssigneeSearch('');
+  };
+
+  const toggleAssignee = (userId: string) => {
+    setItemAssignedUserIds(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const filteredUsers = useMemo(() => {
+    const normalized = assigneeSearch.trim().toLowerCase();
+    if (!normalized) {
+      return seedUsers;
+    }
+    return seedUsers.filter(user => {
+      const label = `${user.firstName} ${user.lastName} ${user.userId}`.toLowerCase();
+      return label.includes(normalized);
+    });
+  }, [assigneeSearch]);
+
+  const handleStartInlineEdit = (workItem: WorkItem) => {
+    setInlineEditId(workItem.id);
+    setInlineTitle(workItem.title);
+    setInlineEta(workItem.etaDate);
+  };
+
+  const handleCancelInlineEdit = () => {
+    setInlineEditId(null);
+    setInlineTitle('');
+    setInlineEta('');
+  };
+
+  const handleSaveInlineEdit = (workItemId: string) => {
+    if (!activeProject || !inlineTitle.trim() || !inlineEta) {
+      return;
+    }
+    setProjects(prev =>
+      prev.map(project => {
+        if (project.id !== activeProject.id) {
+          return project;
+        }
+        return {
+          ...project,
+          workItems: project.workItems.map(item =>
+            item.id === workItemId
+              ? {
+                  ...item,
+                  title: inlineTitle.trim(),
+                  etaDate: inlineEta,
+                }
+              : item
+          ),
+        };
+      })
+    );
+    handleCancelInlineEdit();
+  };
+
+  const handleToggleHidden = (workItem: WorkItem, restore = false) => {
+    if (!activeProject) {
+      return;
+    }
+    const nextDeletedAt = restore ? '' : new Date().toISOString().slice(0, 10);
+    setProjects(prev =>
+      prev.map(project => {
+        if (project.id !== activeProject.id) {
+          return project;
+        }
+        return {
+          ...project,
+          workItems: project.workItems.map(item =>
+            item.id === workItem.id
+              ? {
+                  ...item,
+                  deletedAt: nextDeletedAt,
+                }
+              : item
+          ),
+        };
+      })
+    );
+    if (!restore && selectedWorkItem?.id === workItem.id) {
+      setSelectedWorkItem(null);
+    }
+    if (!restore && inlineEditId === workItem.id) {
+      handleCancelInlineEdit();
+    }
+  };
+
+  const handleEditWorkItem = (workItem: WorkItem) => {
+    populateWorkItemForm(workItem);
+    setEditingWorkItemId(workItem.id);
+    setSelectedWorkItem(null);
+    setExpandedSections({
+      details: false,
+      schedule: false,
+      tags: false,
+      notes: false,
+      attachments: false,
+    });
+    setIsWorkItemDialogOpen(true);
+  };
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const handleExpandAllSections = () => {
+    setExpandedSections({
+      details: true,
+      schedule: true,
+      tags: true,
+      notes: true,
+      attachments: true,
+    });
+  };
+
+  const handleCollapseAllSections = () => {
+    setExpandedSections({
+      details: false,
+      schedule: false,
+      tags: false,
+      notes: false,
+      attachments: false,
+    });
   };
 
   const handleDragStart = (event: React.DragEvent<HTMLButtonElement>, workItem: WorkItem) => {
@@ -519,7 +790,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
               ) : (
                 <div className="projects-lanes">
                   {lanes.map(lane => {
-                    const items = getLaneItems(activeProject.workItems, lane.id);
+                    const items = getLaneItems(visibleWorkItems, lane.id);
                     const collapsed = laneCollapsed[lane.id as keyof typeof laneCollapsed];
                     return (
                       <section
@@ -548,41 +819,115 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
                               <div className="projects-empty">No items in this lane.</div>
                             ) : (
                               items.map(workItem => (
-                                <button
-                                  key={workItem.id}
-                                  className={`projects-item-card projects-item-mini${draggingItemId === workItem.id ? ' dragging' : ''}`}
-                                  type="button"
-                                  draggable
-                                  onClick={() => handleOpenWorkItemDetail(workItem)}
-                                  onDragStart={event => handleDragStart(event, workItem)}
-                                  onDragEnd={handleDragEnd}
-                                >
-                                  <div className="projects-item-mini-head">
-                                    <h6>{workItem.title}</h6>
-                                    <span className="projects-item-dates">
-                                      ETA {workItem.etaDate}
-                                    </span>
-                                  </div>
-                                  <div className="projects-item-mini-meta">
-                                    <span className="projects-muted">
-                                      {workItem.description || 'No description.'}
-                                    </span>
-                                    <div className="projects-badge-row">
-                                      {workItem.assignedUserIds.length > 0 ? (
-                                        workItem.assignedUserIds.slice(0, 3).map(userId => (
-                                          <span key={`${workItem.id}-${userId}`} className="projects-user-badge">
-                                            {getUserInitials(userId)}
+                                (() => {
+                                  const isHidden = Boolean(workItem.deletedAt);
+                                  const isEditing = inlineEditId === workItem.id;
+                                  return (
+                                    <button
+                                      key={workItem.id}
+                                      className={`projects-item-card projects-item-mini${draggingItemId === workItem.id ? ' dragging' : ''}${isHidden ? ' hidden' : ''}`}
+                                      type="button"
+                                      draggable={!isEditing && !isHidden}
+                                      onClick={() => {
+                                        if (!isEditing) {
+                                          handleOpenWorkItemDetail(workItem);
+                                        }
+                                      }}
+                                      onDragStart={event => {
+                                        if (!isHidden && !isEditing) {
+                                          handleDragStart(event, workItem);
+                                        }
+                                      }}
+                                      onDragEnd={handleDragEnd}
+                                    >
+                                      <div className="projects-item-mini-head">
+                                        {isEditing ? (
+                                          <input
+                                            className="projects-inline-input"
+                                            value={inlineTitle}
+                                            onChange={event => setInlineTitle(event.target.value)}
+                                          />
+                                        ) : (
+                                          <h6>{workItem.title}</h6>
+                                        )}
+                                        {isEditing ? (
+                                          <input
+                                            className="projects-inline-input"
+                                            type="date"
+                                            value={inlineEta}
+                                            onChange={event => setInlineEta(event.target.value)}
+                                          />
+                                        ) : (
+                                          <span className="projects-item-dates">
+                                            ETA {workItem.etaDate}
                                           </span>
-                                        ))
-                                      ) : (
-                                        <span className="projects-muted">Unassigned</span>
-                                      )}
-                                      {workItem.assignedUserIds.length > 3 ? (
-                                        <span className="projects-user-badge">+{workItem.assignedUserIds.length - 3}</span>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                </button>
+                                        )}
+                                      </div>
+                                      <div className="projects-item-mini-meta">
+                                        <span className="projects-muted">
+                                          {workItem.description || 'No description.'}
+                                        </span>
+                                        {isHidden ? (
+                                          <span className="projects-item-hidden">Hidden</span>
+                                        ) : null}
+                                        <div className="projects-badge-row">
+                                          {workItem.assignedUserIds.length > 0 ? (
+                                            workItem.assignedUserIds.slice(0, 3).map(userId => (
+                                              <span key={`${workItem.id}-${userId}`} className="projects-user-badge">
+                                                {getUserInitials(userId)}
+                                              </span>
+                                            ))
+                                          ) : (
+                                            <span className="projects-muted">Unassigned</span>
+                                          )}
+                                          {workItem.assignedUserIds.length > 3 ? (
+                                            <span className="projects-user-badge">+{workItem.assignedUserIds.length - 3}</span>
+                                          ) : null}
+                                        </div>
+                                        <div
+                                          className="projects-item-actions"
+                                          onClick={event => event.stopPropagation()}
+                                        >
+                                          {isEditing ? (
+                                            <>
+                                              <button
+                                                className="projects-item-action"
+                                                type="button"
+                                                onClick={() => handleSaveInlineEdit(workItem.id)}
+                                              >
+                                                Save
+                                              </button>
+                                              <button
+                                                className="projects-item-action"
+                                                type="button"
+                                                onClick={handleCancelInlineEdit}
+                                              >
+                                                Cancel
+                                              </button>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <button
+                                                className="projects-item-action"
+                                                type="button"
+                                                onClick={() => handleStartInlineEdit(workItem)}
+                                              >
+                                                Inline edit
+                                              </button>
+                                              <button
+                                                className="projects-item-action"
+                                                type="button"
+                                                onClick={() => handleToggleHidden(workItem, isHidden)}
+                                              >
+                                                {isHidden ? 'Restore' : 'Hide'}
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </button>
+                                  );
+                                })()
                               ))
                             )}
                           </div>
@@ -601,105 +946,223 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
         <div className="projects-subdialog-backdrop" onClick={handleCloseWorkItemDialog}>
           <div className="projects-subdialog" onClick={event => event.stopPropagation()}>
             <div className="projects-subdialog-header">
-              <h4>Add work item</h4>
-              <button className="projects-dialog-close" type="button" onClick={handleCloseWorkItemDialog}>
-                Close
-              </button>
+              <h4>{editingWorkItemId ? 'Edit work item' : 'Add work item'}</h4>
+              <div className="projects-dialog-actions">
+                <button
+                  className="projects-secondary-btn"
+                  type="button"
+                  onClick={handleOpenAssigneeDialog}
+                >
+                  Assign users
+                </button>
+                <button className="projects-dialog-close" type="button" onClick={handleCloseWorkItemDialog}>
+                  Close
+                </button>
+              </div>
             </div>
 
-            <div className="projects-form-grid two">
-              <input
-                className="projects-input"
-                placeholder="Work item title"
-                value={itemTitle}
-                onChange={event => setItemTitle(event.target.value)}
-              />
-              <input
-                className="projects-input"
-                placeholder="Description"
-                value={itemDescription}
-                onChange={event => setItemDescription(event.target.value)}
-              />
-              <input
-                className="projects-input"
-                type="date"
-                value={itemStartDate}
-                onChange={event => setItemStartDate(event.target.value)}
-                title="Work item start date"
-              />
-              <input
-                className="projects-input"
-                type="date"
-                value={itemEtaDate}
-                onChange={event => setItemEtaDate(event.target.value)}
-                title="Work item ETA date"
-              />
-              <input
-                className="projects-input"
-                type="date"
-                value={itemCompleteDate}
-                onChange={event => setItemCompleteDate(event.target.value)}
-                title="Work item completed date"
-              />
-              <input
-                className="projects-input"
-                placeholder="Tags (comma separated)"
-                value={itemTags}
-                onChange={event => setItemTags(event.target.value)}
-              />
+            <div className="projects-assignee-compact">
+              <span className="projects-muted">Assignees</span>
+              <div className="projects-badge-row">
+                {itemAssignedUserIds.length > 0 ? (
+                  itemAssignedUserIds.map(userId => (
+                    <span key={`assigned-${userId}`} className="projects-user-badge">
+                      {getUserInitials(userId)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="projects-muted">No assignees yet</span>
+                )}
+              </div>
             </div>
 
-            <div className="projects-form-grid two compact">
-              <select
-                className="projects-input"
-                multiple
-                value={itemAssignedUserIds}
-                onChange={event =>
-                  setItemAssignedUserIds(Array.from(event.target.selectedOptions, option => option.value))
-                }
-              >
-                {seedUsers.map(user => (
-                  <option key={user.userId} value={user.userId}>
-                    {`${user.firstName} ${user.lastName}`.trim()} ({user.userId})
-                  </option>
-                ))}
-              </select>
+            <div className="projects-workitem-layout">
+              <aside className="projects-workitem-sidebar">
+                <div className="projects-workitem-sidebar-actions">
+                  <button
+                    className="projects-secondary-btn"
+                    type="button"
+                    onClick={handleExpandAllSections}
+                  >
+                    Expand all
+                  </button>
+                  <button
+                    className="projects-secondary-btn"
+                    type="button"
+                    onClick={handleCollapseAllSections}
+                  >
+                    Collapse all
+                  </button>
+                </div>
+                <div className="projects-workitem-step active">Details</div>
+                <div className="projects-workitem-step">Schedule</div>
+                <div className="projects-workitem-step">Tags & Teams</div>
+                <div className="projects-workitem-step">Notes</div>
+                <div className="projects-workitem-step">Attachments</div>
+              </aside>
 
-              <select
-                className="projects-input"
-                multiple
-                value={itemAssignedTeamIds}
-                onChange={event =>
-                  setItemAssignedTeamIds(Array.from(event.target.selectedOptions, option => option.value))
-                }
-              >
-                {seedTeams.map(team => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="projects-workitem-body">
+                <div className={`projects-workitem-section${expandedSections.details ? ' expanded' : ' collapsed'}`}>
+                  <button
+                    className="projects-workitem-section-head"
+                    type="button"
+                    onClick={() => toggleSection('details')}
+                  >
+                    <h5>Details</h5>
+                    <span className="projects-muted">Title and summary</span>
+                    <span className="projects-section-toggle">
+                      {expandedSections.details ? 'Collapse' : 'Expand'}
+                    </span>
+                  </button>
+                  <div className="projects-workitem-section-body">
+                    <div className="projects-form-grid two">
+                      <input
+                        className="projects-input"
+                        placeholder="Work item title"
+                        value={itemTitle}
+                        onChange={event => setItemTitle(event.target.value)}
+                      />
+                      <input
+                        className="projects-input"
+                        placeholder="Description"
+                        value={itemDescription}
+                        onChange={event => setItemDescription(event.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-            <div className="projects-form-grid two">
-              <textarea
-                className="projects-input projects-textarea"
-                placeholder="Notes"
-                value={itemNotes}
-                onChange={event => setItemNotes(event.target.value)}
-              />
-              <textarea
-                className="projects-input projects-textarea"
-                placeholder="Comments (one per line)"
-                value={itemComments}
-                onChange={event => setItemComments(event.target.value)}
-              />
-              <textarea
-                className="projects-input projects-textarea full"
-                placeholder="Attachments (one URL or file path per line)"
-                value={itemAttachments}
-                onChange={event => setItemAttachments(event.target.value)}
-              />
+                <div className={`projects-workitem-section${expandedSections.schedule ? ' expanded' : ' collapsed'}`}>
+                  <button
+                    className="projects-workitem-section-head"
+                    type="button"
+                    onClick={() => toggleSection('schedule')}
+                  >
+                    <h5>Schedule</h5>
+                    <span className="projects-muted">Dates and milestones</span>
+                    <span className="projects-section-toggle">
+                      {expandedSections.schedule ? 'Collapse' : 'Expand'}
+                    </span>
+                  </button>
+                  <div className="projects-workitem-section-body">
+                    <div className="projects-form-grid three">
+                      <input
+                        className="projects-input"
+                        type="date"
+                        value={itemStartDate}
+                        onChange={event => setItemStartDate(event.target.value)}
+                        title="Work item start date"
+                      />
+                      <input
+                        className="projects-input"
+                        type="date"
+                        value={itemEtaDate}
+                        onChange={event => setItemEtaDate(event.target.value)}
+                        title="Work item ETA date"
+                      />
+                      <input
+                        className="projects-input"
+                        type="date"
+                        value={itemCompleteDate}
+                        onChange={event => setItemCompleteDate(event.target.value)}
+                        title="Work item completed date"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`projects-workitem-section${expandedSections.tags ? ' expanded' : ' collapsed'}`}>
+                  <button
+                    className="projects-workitem-section-head"
+                    type="button"
+                    onClick={() => toggleSection('tags')}
+                  >
+                    <h5>Tags & Teams</h5>
+                    <span className="projects-muted">Categorize and route</span>
+                    <span className="projects-section-toggle">
+                      {expandedSections.tags ? 'Collapse' : 'Expand'}
+                    </span>
+                  </button>
+                  <div className="projects-workitem-section-body">
+                    <div className="projects-form-grid two">
+                      <input
+                        className="projects-input"
+                        placeholder="Tags (comma separated)"
+                        value={itemTags}
+                        onChange={event => setItemTags(event.target.value)}
+                      />
+                      <select
+                        className="projects-input"
+                        multiple
+                        value={itemAssignedTeamIds}
+                        onChange={event =>
+                          setItemAssignedTeamIds(Array.from(event.target.selectedOptions, option => option.value))
+                        }
+                      >
+                        {seedTeams.map(team => (
+                          <option key={team.id} value={team.id}>
+                            {team.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`projects-workitem-section${expandedSections.notes ? ' expanded' : ' collapsed'}`}>
+                  <button
+                    className="projects-workitem-section-head"
+                    type="button"
+                    onClick={() => toggleSection('notes')}
+                  >
+                    <h5>Notes & Comments</h5>
+                    <span className="projects-muted">Context for the team</span>
+                    <span className="projects-section-toggle">
+                      {expandedSections.notes ? 'Collapse' : 'Expand'}
+                    </span>
+                  </button>
+                  <div className="projects-workitem-section-body">
+                    <div className="projects-form-grid two">
+                      <textarea
+                        className="projects-input projects-textarea"
+                        placeholder="Notes"
+                        value={itemNotes}
+                        onChange={event => setItemNotes(event.target.value)}
+                      />
+                      <textarea
+                        className="projects-input projects-textarea"
+                        placeholder="Comments (one per line)"
+                        value={itemComments}
+                        onChange={event => setItemComments(event.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`projects-workitem-section${expandedSections.attachments ? ' expanded' : ' collapsed'}`}>
+                  <button
+                    className="projects-workitem-section-head"
+                    type="button"
+                    onClick={() => toggleSection('attachments')}
+                  >
+                    <h5>Attachments</h5>
+                    <span className="projects-muted">Links and files</span>
+                    <span className="projects-section-toggle">
+                      {expandedSections.attachments ? 'Collapse' : 'Expand'}
+                    </span>
+                  </button>
+                  <div className="projects-workitem-section-body">
+                    <div className="projects-form-grid two">
+                      <textarea
+                        className="projects-input projects-textarea full"
+                        placeholder="Attachments (one URL or file path per line)"
+                        value={itemAttachments}
+                        onChange={event => setItemAttachments(event.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="projects-dialog-actions">
@@ -711,7 +1174,58 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
                 onClick={handleSubmitWorkItem}
                 disabled={!itemTitle.trim() || !itemStartDate || !itemEtaDate}
               >
-                Save Work Item
+                {editingWorkItemId ? 'Save Changes' : 'Save Work Item'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isDialogOpen && isWorkItemDialogOpen && isAssigneeDialogOpen ? (
+        <div className="projects-subdialog-backdrop" onClick={handleCloseAssigneeDialog}>
+          <div className="projects-subdialog projects-assign-dialog" onClick={event => event.stopPropagation()}>
+            <div className="projects-subdialog-header">
+              <div>
+                <h4>Assign users</h4>
+                <p className="projects-muted">Search and select multiple assignees.</p>
+              </div>
+              <button className="projects-dialog-close" type="button" onClick={handleCloseAssigneeDialog}>
+                Close
+              </button>
+            </div>
+
+            <input
+              className="projects-input"
+              placeholder="Search users by name or ID"
+              value={assigneeSearch}
+              onChange={event => setAssigneeSearch(event.target.value)}
+            />
+
+            <div className="projects-assign-list">
+              {filteredUsers.map(user => {
+                const isSelected = itemAssignedUserIds.includes(user.userId);
+                return (
+                  <label key={`assign-${user.userId}`} className="projects-assign-row">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleAssignee(user.userId)}
+                    />
+                    <span className="projects-assign-name">
+                      {`${user.firstName} ${user.lastName}`.trim()}
+                      <span className="projects-muted"> ({user.userId})</span>
+                    </span>
+                    <span className="projects-count-badge">
+                      {userTaskCounts[user.userId] ?? 0}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="projects-dialog-actions">
+              <button className="projects-dialog-close" type="button" onClick={handleCloseAssigneeDialog}>
+                Done
               </button>
             </div>
           </div>
@@ -729,9 +1243,21 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
                   {selectedWorkItem.completedDate ? ` → Done ${selectedWorkItem.completedDate}` : ''}
                 </p>
               </div>
-              <button className="projects-dialog-close" type="button" onClick={handleCloseWorkItemDetail}>
-                Close
-              </button>
+              <div className="projects-dialog-actions">
+                <button className="projects-dialog-close" type="button" onClick={() => handleEditWorkItem(selectedWorkItem)}>
+                  Edit
+                </button>
+                <button
+                  className="projects-dialog-close"
+                  type="button"
+                  onClick={() => handleToggleHidden(selectedWorkItem, Boolean(selectedWorkItem.deletedAt))}
+                >
+                  {selectedWorkItem.deletedAt ? 'Restore' : 'Hide'}
+                </button>
+                <button className="projects-dialog-close" type="button" onClick={handleCloseWorkItemDetail}>
+                  Close
+                </button>
+              </div>
             </div>
 
             <p className="projects-item-description">

@@ -12,6 +12,7 @@ export interface WorkItem {
   etaDate: string;
   completedDate: string;
   status: 'backlog' | 'inProgress' | 'done';
+  deletedAt: string;
   assignedUserIds: string[];
   assignedTeamIds: string[];
   notes: string;
@@ -47,6 +48,7 @@ export const seedProjects: Project[] = [
         etaDate: '2026-03-10',
         completedDate: '',
         status: 'inProgress',
+        deletedAt: '',
         assignedUserIds: ['nami'],
         assignedTeamIds: ['core-platform'],
         notes: 'Keep mobile-first constraints in scope.',
@@ -68,6 +70,7 @@ export const seedProjects: Project[] = [
         etaDate: '2026-03-28',
         completedDate: '2026-03-27',
         status: 'done',
+        deletedAt: '',
         assignedUserIds: ['franky'],
         assignedTeamIds: ['core-platform'],
         notes: 'Prioritize Lighthouse performance targets.',
@@ -93,6 +96,7 @@ export const seedProjects: Project[] = [
         etaDate: '2026-03-12',
         completedDate: '2026-03-11',
         status: 'done',
+        deletedAt: '',
         assignedUserIds: ['chopper'],
         assignedTeamIds: ['field-ops'],
         notes: 'Focus on offline workflows and login edge cases.',
@@ -114,6 +118,7 @@ export const seedProjects: Project[] = [
         etaDate: '2026-03-18',
         completedDate: '',
         status: 'inProgress',
+        deletedAt: '',
         assignedUserIds: ['sanji'],
         assignedTeamIds: ['creative'],
         notes: 'Awaiting product marketing approval.',
@@ -129,6 +134,7 @@ export const seedProjects: Project[] = [
         etaDate: '2026-03-28',
         completedDate: '',
         status: 'backlog',
+        deletedAt: '',
         assignedUserIds: ['luffy'],
         assignedTeamIds: ['core-platform'],
         notes: 'Share launch timeline in the weekly sync.',
@@ -154,6 +160,7 @@ export const seedProjects: Project[] = [
         etaDate: '2026-02-20',
         completedDate: '2026-02-18',
         status: 'done',
+        deletedAt: '',
         assignedUserIds: ['robin'],
         assignedTeamIds: ['enterprise-success'],
         notes: 'Track drop-off metrics weekly.',
@@ -169,6 +176,7 @@ export const seedProjects: Project[] = [
         etaDate: '2026-03-05',
         completedDate: '',
         status: 'inProgress',
+        deletedAt: '',
         assignedUserIds: ['zoro'],
         assignedTeamIds: ['security'],
         notes: 'Coordinate with compliance before roll-out.',
@@ -184,6 +192,7 @@ export const seedProjects: Project[] = [
         etaDate: '2026-03-22',
         completedDate: '',
         status: 'inProgress',
+        deletedAt: '',
         assignedUserIds: ['usopp'],
         assignedTeamIds: ['analytics'],
         notes: 'Line up export requirements with finance.',

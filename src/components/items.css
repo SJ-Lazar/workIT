@@ -255,3 +255,20 @@ body.theme-light .items-empty {
     align-items: flex-start;
   }
 }
+
+@media (max-width: 768px) {
+  .items-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .items-controls {
+    gap: 10px;
+  }
+
+  .items-lane {
+    padding: 10px;
+  }
+}

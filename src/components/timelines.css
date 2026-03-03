@@ -118,3 +118,9 @@ body.theme-light .timelines-empty {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .timelines-board {
+    padding: 12px;
+  }
+}
