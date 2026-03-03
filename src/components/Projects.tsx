@@ -35,7 +35,8 @@ const makeUniqueId = (name: string, existingIds: string[]) => {
 };
 
 const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
-  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? '');
+  const [activeProjectId, setActiveProjectId] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const [projectName, setProjectName] = useState('');
   const [projectStartDate, setProjectStartDate] = useState('');
@@ -53,16 +54,16 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
   const [itemAssignedUserIds, setItemAssignedUserIds] = useState<string[]>([]);
   const [itemAssignedTeamIds, setItemAssignedTeamIds] = useState<string[]>([]);
 
-  const selectedProject = useMemo(
-    () => projects.find(project => project.id === selectedProjectId) ?? null,
-    [projects, selectedProjectId]
+  const activeProject = useMemo(
+    () => projects.find(project => project.id === activeProjectId) ?? null,
+    [projects, activeProjectId]
   );
 
   useEffect(() => {
-    if (!projects.some(project => project.id === selectedProjectId)) {
-      setSelectedProjectId(projects[0]?.id ?? '');
+    if (isDialogOpen && !activeProject) {
+      setIsDialogOpen(false);
     }
-  }, [projects, selectedProjectId]);
+  }, [activeProject, isDialogOpen]);
 
   const clearWorkItemForm = () => {
     setItemTitle('');
@@ -92,24 +93,27 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
     const newProject: Project = {
       id,
       name: cleanName,
+      description: '',
       startDate: projectStartDate,
       endDate: projectEndDate,
+      assignedUserIds: [],
       workItems: [],
     };
 
     setProjects(prev => [newProject, ...prev]);
-    setSelectedProjectId(newProject.id);
+    setActiveProjectId(newProject.id);
+    setIsDialogOpen(true);
     setProjectName('');
     setProjectStartDate('');
     setProjectEndDate('');
   };
 
   const handleCreateWorkItem = () => {
-    if (!selectedProject || !itemTitle.trim() || !itemStartDate || !itemEtaDate) {
+    if (!activeProject || !itemTitle.trim() || !itemStartDate || !itemEtaDate) {
       return;
     }
 
-    const existingItemIds = selectedProject.workItems.map(item => item.id);
+    const existingItemIds = activeProject.workItems.map(item => item.id);
     const itemId = makeUniqueId(itemTitle, existingItemIds);
     if (!itemId) {
       return;
@@ -152,7 +156,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
 
     setProjects(prev =>
       prev.map(project =>
-        project.id === selectedProject.id
+        project.id === activeProject.id
           ? { ...project, workItems: [newItem, ...project.workItems] }
           : project
       )
@@ -175,6 +179,38 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
 
     const all = [...userNames, ...teamNames];
     return all.length > 0 ? all.join(', ') : 'Unassigned';
+  };
+
+  const getUserInitials = (userId: string) => {
+    const user = seedUsers.find(candidate => candidate.userId === userId);
+    if (!user) {
+      return userId.slice(0, 2).toUpperCase();
+    }
+    const name = `${user.firstName} ${user.lastName}`.trim();
+    if (!name) {
+      return userId.slice(0, 2).toUpperCase();
+    }
+    const parts = name.split(' ').filter(Boolean);
+    const initials = parts.slice(0, 2).map(part => part[0]).join('');
+    return initials.toUpperCase();
+  };
+
+  const getProjectProgress = (project: Project) => {
+    const total = project.workItems.length;
+    const completed = project.workItems.filter(item => Boolean(item.completedDate)).length;
+    const remaining = total - completed;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, remaining, percent };
+  };
+
+  const handleOpenProject = (projectId: string) => {
+    clearWorkItemForm();
+    setActiveProjectId(projectId);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
   };
 
   return (
@@ -216,199 +252,304 @@ const Projects: React.FC<ProjectsProps> = ({ projects, setProjects }) => {
         </button>
       </div>
 
-      <div className="projects-selector-row">
-        {projects.map(project => (
-          <button
-            key={project.id}
-            className={`projects-chip${selectedProjectId === project.id ? ' active' : ''}`}
-            onClick={() => setSelectedProjectId(project.id)}
-          >
-            <div className="projects-chip-title">{project.name}</div>
-            <small>
-              {project.startDate} → {project.endDate}
-            </small>
-          </button>
-        ))}
-      </div>
-
-      {selectedProject ? (
-        <>
-          <div className="projects-card">
-            <div className="projects-selected-title">
-              <div>
-                <h3>{selectedProject.name}</h3>
-                <p>Timeline: {selectedProject.startDate} → {selectedProject.endDate}</p>
-              </div>
-              <div className="projects-pill">{selectedProject.workItems.length} work items</div>
-            </div>
-
-            <div className="projects-form-grid two">
-              <input
-                className="projects-input"
-                placeholder="Work item title"
-                value={itemTitle}
-                onChange={event => setItemTitle(event.target.value)}
-              />
-              <input
-                className="projects-input"
-                placeholder="Description"
-                value={itemDescription}
-                onChange={event => setItemDescription(event.target.value)}
-              />
-              <input
-                className="projects-input"
-                type="date"
-                value={itemStartDate}
-                onChange={event => setItemStartDate(event.target.value)}
-                title="Work item start date"
-              />
-              <input
-                className="projects-input"
-                type="date"
-                value={itemEtaDate}
-                onChange={event => setItemEtaDate(event.target.value)}
-                title="Work item ETA date"
-              />
-              <input
-                className="projects-input"
-                type="date"
-                value={itemCompleteDate}
-                onChange={event => setItemCompleteDate(event.target.value)}
-                title="Work item completed date"
-              />
-              <input
-                className="projects-input"
-                placeholder="Tags (comma separated)"
-                value={itemTags}
-                onChange={event => setItemTags(event.target.value)}
-              />
-            </div>
-
-            <div className="projects-form-grid two compact">
-              <select
-                className="projects-input"
-                multiple
-                value={itemAssignedUserIds}
-                onChange={event =>
-                  setItemAssignedUserIds(Array.from(event.target.selectedOptions, option => option.value))
-                }
-              >
-                {seedUsers.map(user => (
-                  <option key={user.userId} value={user.userId}>
-                    {`${user.firstName} ${user.lastName}`.trim()} ({user.userId})
-                  </option>
-                ))}
-              </select>
-
-              <select
-                className="projects-input"
-                multiple
-                value={itemAssignedTeamIds}
-                onChange={event =>
-                  setItemAssignedTeamIds(Array.from(event.target.selectedOptions, option => option.value))
-                }
-              >
-                {seedTeams.map(team => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="projects-form-grid two">
-              <textarea
-                className="projects-input projects-textarea"
-                placeholder="Notes"
-                value={itemNotes}
-                onChange={event => setItemNotes(event.target.value)}
-              />
-              <textarea
-                className="projects-input projects-textarea"
-                placeholder="Comments (one per line)"
-                value={itemComments}
-                onChange={event => setItemComments(event.target.value)}
-              />
-              <textarea
-                className="projects-input projects-textarea full"
-                placeholder="Attachments (one URL or file path per line)"
-                value={itemAttachments}
-                onChange={event => setItemAttachments(event.target.value)}
-              />
-            </div>
-
+      <div className="projects-grid">
+        {projects.map(project => {
+          const progress = getProjectProgress(project);
+          return (
             <button
-              className="projects-primary-btn"
-              onClick={handleCreateWorkItem}
-              disabled={!itemTitle.trim() || !itemStartDate || !itemEtaDate}
+              key={project.id}
+              className="projects-card projects-overview-card"
+              type="button"
+              onClick={() => handleOpenProject(project.id)}
             >
-              Add Work Item
-            </button>
-          </div>
-
-          <div className="projects-items-list">
-            {selectedProject.workItems.map(workItem => (
-              <article key={workItem.id} className="projects-item-card">
-                <div className="projects-item-head">
-                  <h4>{workItem.title}</h4>
-                  <span className="projects-item-dates">
-                    {workItem.startDate} → ETA {workItem.etaDate}
-                    {workItem.completedDate ? ` → Done ${workItem.completedDate}` : ''}
+              <div className="projects-overview-head">
+                <div>
+                  <h3>{project.name}</h3>
+                  <span className="projects-overview-dates">
+                    {project.startDate} → {project.endDate}
                   </span>
                 </div>
+                <div className="projects-pill">{progress.total} items</div>
+              </div>
 
-                <p className="projects-item-description">{workItem.description || 'No description.'}</p>
-                <p className="projects-item-line"><strong>Assigned:</strong> {renderAssigneeNames(workItem)}</p>
-                <p className="projects-item-line"><strong>Notes:</strong> {workItem.notes || 'None'}</p>
+              <p className="projects-overview-description">
+                {project.description || 'Project overview pending.'}
+              </p>
 
-                <div className="projects-item-block">
-                  <strong>Tags:</strong>
-                  <div className="projects-tag-row">
-                    {workItem.tags.length > 0
-                      ? workItem.tags.map(tag => (
-                          <span key={`${workItem.id}-${tag}`} className="projects-tag">
-                            {tag}
-                          </span>
-                        ))
-                      : <span className="projects-muted">No tags</span>}
-                  </div>
+              <div className="projects-badge-row">
+                {project.assignedUserIds.length > 0 ? (
+                  project.assignedUserIds.map(userId => (
+                    <span key={`${project.id}-${userId}`} className="projects-user-badge">
+                      {getUserInitials(userId)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="projects-muted">No assigned users</span>
+                )}
+              </div>
+
+              <div className="projects-progress">
+                <div className="projects-progress-track">
+                  <span
+                    className="projects-progress-fill"
+                    style={{ width: `${progress.percent}%` }}
+                  />
                 </div>
-
-                <div className="projects-item-block">
-                  <strong>Comments:</strong>
-                  {workItem.comments.length > 0 ? (
-                    <ul className="projects-list">
-                      {workItem.comments.map(comment => (
-                        <li key={comment.id}>{comment.text} <span className="projects-muted">({comment.createdAt})</span></li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="projects-muted">No comments</p>
-                  )}
+                <div className="projects-progress-meta">
+                  <span>{progress.completed} completed</span>
+                  <span>{progress.remaining} remaining</span>
                 </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
 
-                <div className="projects-item-block">
-                  <strong>Attachments:</strong>
-                  {workItem.attachments.length > 0 ? (
-                    <ul className="projects-list">
-                      {workItem.attachments.map(attachment => (
-                        <li key={`${workItem.id}-${attachment}`}>{attachment}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="projects-muted">No attachments</p>
-                  )}
-                </div>
-              </article>
-            ))}
-            {selectedProject.workItems.length === 0 && (
-              <div className="projects-empty">No work items yet for this project.</div>
-            )}
+      {isDialogOpen && activeProject ? (
+        <div className="projects-dialog-backdrop" onClick={handleCloseDialog}>
+          <div className="projects-dialog" onClick={event => event.stopPropagation()}>
+            <div className="projects-dialog-header">
+              <div>
+                <h3>{activeProject.name}</h3>
+                <p>Timeline: {activeProject.startDate} → {activeProject.endDate}</p>
+              </div>
+              <button className="projects-dialog-close" type="button" onClick={handleCloseDialog}>
+                Close
+              </button>
+            </div>
+
+            <p className="projects-dialog-description">
+              {activeProject.description || 'No project description yet.'}
+            </p>
+
+            <div className="projects-dialog-stats">
+              {(() => {
+                const progress = getProjectProgress(activeProject);
+                return (
+                  <>
+                    <div className="projects-stat-card">
+                      <span className="projects-stat-label">Completed</span>
+                      <strong>{progress.completed}</strong>
+                    </div>
+                    <div className="projects-stat-card">
+                      <span className="projects-stat-label">Remaining</span>
+                      <strong>{progress.remaining}</strong>
+                    </div>
+                    <div className="projects-stat-card">
+                      <span className="projects-stat-label">Total items</span>
+                      <strong>{progress.total}</strong>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            <div className="projects-progress dialog">
+              {(() => {
+                const progress = getProjectProgress(activeProject);
+                return (
+                  <>
+                    <div className="projects-progress-track">
+                      <span
+                        className="projects-progress-fill"
+                        style={{ width: `${progress.percent}%` }}
+                      />
+                    </div>
+                    <div className="projects-progress-meta">
+                      <span>{progress.percent}% complete</span>
+                      <span>{progress.completed} done</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            <div className="projects-dialog-section">
+              <h4>Assigned team</h4>
+              <div className="projects-badge-row">
+                {activeProject.assignedUserIds.length > 0 ? (
+                  activeProject.assignedUserIds.map(userId => (
+                    <span key={`${activeProject.id}-${userId}`} className="projects-user-badge">
+                      {getUserInitials(userId)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="projects-muted">No assigned users</span>
+                )}
+              </div>
+            </div>
+
+            <div className="projects-dialog-section">
+              <h4>Add work item</h4>
+              <div className="projects-form-grid two">
+                <input
+                  className="projects-input"
+                  placeholder="Work item title"
+                  value={itemTitle}
+                  onChange={event => setItemTitle(event.target.value)}
+                />
+                <input
+                  className="projects-input"
+                  placeholder="Description"
+                  value={itemDescription}
+                  onChange={event => setItemDescription(event.target.value)}
+                />
+                <input
+                  className="projects-input"
+                  type="date"
+                  value={itemStartDate}
+                  onChange={event => setItemStartDate(event.target.value)}
+                  title="Work item start date"
+                />
+                <input
+                  className="projects-input"
+                  type="date"
+                  value={itemEtaDate}
+                  onChange={event => setItemEtaDate(event.target.value)}
+                  title="Work item ETA date"
+                />
+                <input
+                  className="projects-input"
+                  type="date"
+                  value={itemCompleteDate}
+                  onChange={event => setItemCompleteDate(event.target.value)}
+                  title="Work item completed date"
+                />
+                <input
+                  className="projects-input"
+                  placeholder="Tags (comma separated)"
+                  value={itemTags}
+                  onChange={event => setItemTags(event.target.value)}
+                />
+              </div>
+
+              <div className="projects-form-grid two compact">
+                <select
+                  className="projects-input"
+                  multiple
+                  value={itemAssignedUserIds}
+                  onChange={event =>
+                    setItemAssignedUserIds(Array.from(event.target.selectedOptions, option => option.value))
+                  }
+                >
+                  {seedUsers.map(user => (
+                    <option key={user.userId} value={user.userId}>
+                      {`${user.firstName} ${user.lastName}`.trim()} ({user.userId})
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="projects-input"
+                  multiple
+                  value={itemAssignedTeamIds}
+                  onChange={event =>
+                    setItemAssignedTeamIds(Array.from(event.target.selectedOptions, option => option.value))
+                  }
+                >
+                  {seedTeams.map(team => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="projects-form-grid two">
+                <textarea
+                  className="projects-input projects-textarea"
+                  placeholder="Notes"
+                  value={itemNotes}
+                  onChange={event => setItemNotes(event.target.value)}
+                />
+                <textarea
+                  className="projects-input projects-textarea"
+                  placeholder="Comments (one per line)"
+                  value={itemComments}
+                  onChange={event => setItemComments(event.target.value)}
+                />
+                <textarea
+                  className="projects-input projects-textarea full"
+                  placeholder="Attachments (one URL or file path per line)"
+                  value={itemAttachments}
+                  onChange={event => setItemAttachments(event.target.value)}
+                />
+              </div>
+
+              <button
+                className="projects-primary-btn"
+                onClick={handleCreateWorkItem}
+                disabled={!itemTitle.trim() || !itemStartDate || !itemEtaDate}
+              >
+                Add Work Item
+              </button>
+            </div>
+
+            <div className="projects-dialog-section">
+              <h4>Work items</h4>
+              <div className="projects-items-list">
+                {activeProject.workItems.map(workItem => (
+                  <article key={workItem.id} className="projects-item-card">
+                    <div className="projects-item-head">
+                      <h4>{workItem.title}</h4>
+                      <span className="projects-item-dates">
+                        {workItem.startDate} → ETA {workItem.etaDate}
+                        {workItem.completedDate ? ` → Done ${workItem.completedDate}` : ''}
+                      </span>
+                    </div>
+
+                    <p className="projects-item-description">{workItem.description || 'No description.'}</p>
+                    <p className="projects-item-line"><strong>Assigned:</strong> {renderAssigneeNames(workItem)}</p>
+                    <p className="projects-item-line"><strong>Notes:</strong> {workItem.notes || 'None'}</p>
+
+                    <div className="projects-item-block">
+                      <strong>Tags:</strong>
+                      <div className="projects-tag-row">
+                        {workItem.tags.length > 0
+                          ? workItem.tags.map(tag => (
+                              <span key={`${workItem.id}-${tag}`} className="projects-tag">
+                                {tag}
+                              </span>
+                            ))
+                          : <span className="projects-muted">No tags</span>}
+                      </div>
+                    </div>
+
+                    <div className="projects-item-block">
+                      <strong>Comments:</strong>
+                      {workItem.comments.length > 0 ? (
+                        <ul className="projects-list">
+                          {workItem.comments.map(comment => (
+                            <li key={comment.id}>{comment.text} <span className="projects-muted">({comment.createdAt})</span></li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="projects-muted">No comments</p>
+                      )}
+                    </div>
+
+                    <div className="projects-item-block">
+                      <strong>Attachments:</strong>
+                      {workItem.attachments.length > 0 ? (
+                        <ul className="projects-list">
+                          {workItem.attachments.map(attachment => (
+                            <li key={`${workItem.id}-${attachment}`}>{attachment}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="projects-muted">No attachments</p>
+                      )}
+                    </div>
+                  </article>
+                ))}
+                {activeProject.workItems.length === 0 ? (
+                  <div className="projects-empty">No work items added yet.</div>
+                ) : null}
+              </div>
+            </div>
           </div>
-        </>
-      ) : (
-        <div className="projects-empty">Create a project to get started.</div>
-      )}
+        </div>
+      ) : null}
     </div>
   );
 };

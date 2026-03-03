@@ -6,6 +6,7 @@ import Departments from './components/Departments';
 import Teams from './components/Teams';
 import Projects from './components/Projects';
 import Items from './components/Items';
+import Timelines from './components/Timelines.tsx';
 import { seedProjects } from './data/projects';
 import { users as seedUsers, seedRoles, departments as seedDepartments } from './data/users';
 import { seedTeams } from './data/teams';
@@ -15,6 +16,7 @@ const navItems = [
   { key: 'team', label: 'Team', icon: '👥' },
   { key: 'projects', label: 'Projects', icon: '📁' },
   { key: 'items', label: 'Items', icon: '📦' },
+  { key: 'timelines', label: 'Timelines', icon: '🗓️' },
   { key: 'users', label: 'Users', icon: '🧑' },
   { key: 'settings', label: 'Settings', icon: '⚙️' },
 ];
@@ -193,6 +195,12 @@ function App() {
     mainContent = (
       <div>
         <Items projects={projects} />
+      </div>
+    );
+  } else if (section === 'timelines') {
+    mainContent = (
+      <div>
+        <Timelines projects={projects} />
       </div>
     );
   } else if (section === 'users') {
