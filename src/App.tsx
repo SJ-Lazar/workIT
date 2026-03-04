@@ -204,7 +204,7 @@ function App() {
   } else if (section === 'items') {
     mainContent = (
       <div>
-        <Items projects={projects} showHiddenItems={showHiddenItems} />
+        <Items projects={projects} setProjects={setProjects} showHiddenItems={showHiddenItems} />
       </div>
     );
   } else if (section === 'timelines') {
